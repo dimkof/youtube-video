@@ -6,190 +6,195 @@
  */
 class Kohana_Youtube
 {
-	/**
-	 * @var array configs
-	 */
-	protected $configs = NULL;
-	
-	/**
-	 * @var string API URL
-	 */
-	protected $api_url = NULL;
-	
-	/**
-	 * @var string
-	 */
-	protected $query_url = '';
-		
-	/**
-	 * @var object cached result
-	 */
-	protected $video = NULL;
-	
-	/**
-	 * @var string
-	 */
-	protected $type = 'videos';
-	
-	/**
-	 * @param string $type (videos|users)
-	 */
-	public static function factory($type = 'videos')
-	{
-		return new Kohana_Youtube($type);
-	}
-	
-	public function __construct($type)
-	{
-		if($this->configs == NULL)
-			$this->configs = Kohana::$config->load('youtube');
+    /**
+     * @var array configs
+     */
+    protected $configs = NULL;
 
-		$this->api_url = Arr::get($this->configs, 'api_url') . $type;
-		$this->type = $type;
-	}
-	
-	/**
+    /**
+     * @var array data parameters
+     */
+    protected $params = array();
+
+    /**
+     * @var string feeds type
+     */
+    protected $type = 'videos';
+
+    /**
+     * @var string request url
+     */
+    protected $_url;
+
+    public static function factory($type = 'videos')
+    {
+        return new Kohana_Youtube($type);
+    }
+
+    public function __construct($type)
+    {
+        $this->type = $type;
+
+        if ($this->configs == NULL)
+        {
+            $this->configs = Kohana::$config->load('youtube');
+        }
+    }
+
+    /**
      * Get results
-	 */
-	public function find_all()
-	{			
-		$this->build_url();
-		$result = Request::factory($this->api_url)->execute();
-		$this->video = json_decode($result);
-		
-		if( !isset($this->video->data))
-			return NULL;
-		
-		return $this->video->data->items;
-	}
-	
-	/**
-     * Get video by id
-	 */
-	public function find($id)
-	{
-		$this->api_url .= '/' . $id;
-		$this->build_url();
-		
-		$result = Request::factory($this->api_url)->execute();
-		$video = json_decode($result);
-		
-		if( !isset($video->data))
-			return NULL;
-		
-		return $video->data;
-	}
-	
-	/**
-     * Result counting
-	 * @throws Kohana_Exception
-	 */
-	public function count_all()
-	{
-		if( $this->video == NULL)
-			throw new Kohana_Exception('Model is not loaded');
-		
-		return $this->video->data->totalItems;
-	}
-	
-	/**
-     * Get video by user
-	 * @param string $username
-	 * @throws Kohana_Exception
-	 */
-	public function uploads($username)
-	{
-		if(strstr($this->api_url, '?') or $this->type != 'users')
-			throw new Kohana_Exception('Wrong request!');
-		
-		$this->api_url .= '/' . $username . '/uploads';
-		return $this;
-	}
-	
-	/**
-     * Get user playlists
-	 * @param string $username
-	 */
-	public function playlist($username)
-	{
-		if(strstr($this->api_url, '?') or $this->type != 'users')
-			throw new Kohana_Exception('Wrong request!');
-		
-		$this->api_url .= '/' . $username . '/playlists';
-		return $this;
-	}
-	
-	/**
-     * Advanced search
-	 * @param string $columnmabe (q|author|format|time)
-	 * @param string $value 
-	 */
-	public function where($column = 'q', $value)
-	{
-		$value = stripslashes($value);
-		
-		// sanitizing
-		$column = strtolower($column);
-		$value  = urlencode($value);		
-		$this->query_url .= $column . '=' . $value;
+     * 
+     * @access public
+     * @return result
+     */
+    public function find_all()
+    {
+        $result = $this->execute();
+        return $result;
+    }
 
-		return $this;
-	}
-	
-	/**
-     * and_where
-	 * @param string $value
-	 * @param string $column mabe (vq|author|format|time)
-	 */
-	public function and_where($column, $value)
-	{
-		return '&' . $this->where($column, $value);
-	}
-	
-	/**
-     * Sets for order_by query
-	 * @param string $column
-	 */
-	public function order_by($column)
-	{
-		if( !in_array($column, Arr::get($this->configs, 'order_columns')))
-			throw new Kohana_Exception("Its not supported order column");
-		
-		$this->query_url .= '&orderby=' . $column;
-		return $this;
-	}
-	
-	/**
-     * Limits for videos
-	 * @param int $i
-	 */
-	public function limit($i)
-	{
-		$i = intval($i);
-		$this->query_url .= '&max-results=' . $i;
-		return $this;
-	}
-	
-	/**
-     * Offset index for pagination
-	 * @param int $offset
-	 */
-	public function offset($o)
-	{
-		$o = intval($o);
-		$this->query_url .= '&start-index=' . $o;
-		return $this;
-	}
-	
-	/**
-	 * API url building
-	 */
-	private function build_url()
-	{
-		$this->api_url .= '?' . $this->query_url;
-		$this->api_url .= '&alt=jsonc';
-		$this->api_url .= '&v=' . $this->configs['version'];
-		$this->api_url .= '&key=' . $this->configs['api_key'];
-	}
-	
+    /**
+     * Get single result 
+     *
+     * @access public
+     */
+    public function find()
+    {
+        $this->setParam('max-results', 1);
+        return $this->execute();
+    }
+
+    /**
+     * Advanced search
+     *
+	   * @param string $column (q|author|format|time)
+	   * @param string $value 
+     * @return $this
+     */
+    public function where($column = 'q', $value)
+    {
+		    $value = stripslashes($value);
+		    
+		    // sanitizing
+		    $column = strtolower($column);
+		    $value  = urlencode($value);		
+
+        $this->setParam($column, $value);
+
+		    return $this;
+    }
+
+    /**
+     * Items limits
+     * 
+     * @param int $limit 
+     * @return $this
+     */
+    public function limit($limit)
+    {
+        $this->setParam('max-results', intval($limit));
+        return $this;
+    }
+
+    /**
+     * Offset
+     * 
+     * @param int $offset 
+     * @return $this
+     */
+    public function offset($offset)
+    {
+        $this->setParam('start-index', intval($offset));
+        return $this;
+    }
+
+    /**
+     * Sorting
+     * 
+     * @param mixed $column 
+     * @return $this
+     */
+    public function order_by($column)
+    {
+        $this->setParam('orderby', $column);
+        return $this;
+    }
+
+    /**
+     * Sets parameters for standard Google API
+     * 
+     * @param string $name 
+     * @param string $value 
+     * @access public
+     * @return $this
+     */
+    public function setParam($name, $value)
+    {
+        $this->params[$name] = $value;
+        return $this;
+    }
+
+    /**
+     * Build API URL for this request
+     * 
+     * @access protected
+     * @return void
+     */
+    protected function build_url()
+    {
+        $configs = $this->configs;
+        $this->_url = $configs['api_url'] . $this->type;
+
+        $this->_url .= '?alt=jsonc';
+        $this->_url .= '&v=' . $configs['version'];
+
+        if ($configs['api_key'] != '')
+        {
+            $this->_url .= '&key=' . $config['api_key'];
+        }
+
+        foreach ($this->params as $key => $val)
+        {
+            $this->_url .= '&'.$key . '=' . $val;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Request executing
+     * 
+     * @access protected
+     * @return void
+     */
+    protected function execute()
+    {
+        if ($this->_url == NULL)
+        {
+            $this->build_url();
+        }
+
+
+        try
+        {
+            $result = Request::factory($this->_url)
+                ->execute()
+                ->body();
+
+            $result = json_encode($result);
+        }
+        catch (Exception $e)
+        {
+            throw new Kohana_Exception($e->getMessage);
+        }
+
+        if (isset($result->data))
+        {
+            return $result->data;
+        }
+        else 
+        {
+            return NULL;
+        }
+    }
 }// END
