@@ -150,7 +150,7 @@ class Kohana_Youtube
 
         if ($configs['api_key'] != '')
         {
-            $this->_url .= '&key=' . $config['api_key'];
+            $this->_url .= '&key=' . $configs['api_key'];
         }
 
         foreach ($this->params as $key => $val)
