@@ -24,7 +24,7 @@ class Kohana_Youtube
     /**
      * @var string request url
      */
-    protected $_url;
+    protected $_url = NULL;
 
     public static function factory($type = 'videos')
     {
@@ -174,14 +174,13 @@ class Kohana_Youtube
             $this->build_url();
         }
 
-
         try
         {
             $result = Request::factory($this->_url)
                 ->execute()
                 ->body();
 
-            $result = json_encode($result);
+            $result = json_decode($result);
         }
         catch (Exception $e)
         {
