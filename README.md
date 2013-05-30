@@ -17,8 +17,14 @@ Search video on Youtube
 =======================
 
 `
-$videos = Youtube::factory('videos')
-    ->where('q', 'Search query')
-    ->limit(10)->offset(1)
+$videos = Youtube::factory('videos') \
+    ->where('q', 'Search query') \
+    ->limit(10)->offset(1) \
     ->find_all();
+`
+
+Find video by id
+`
+$video = Youtube::factory('videos/place_video_id_from_youtube') \
+    ->execute();
 `
