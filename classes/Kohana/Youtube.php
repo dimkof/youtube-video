@@ -167,7 +167,7 @@ class Kohana_Youtube
      * @access protected
      * @return void
      */
-    protected function execute()
+    public function execute()
     {
         if ($this->_url == NULL)
         {
